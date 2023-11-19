@@ -23,7 +23,6 @@ export class App extends Component {
   componentDidUpdate(prevProps, prevState) {
     const { keyWord, page } = this.state;
     if (prevState.keyWord !== keyWord || prevState.page !== page) {
-      this.setState({ loader: true });
       this.fetchImages(keyWord, page);
     }
   }
@@ -34,6 +33,7 @@ export class App extends Component {
 
   fetchImages = async (keyWord, page) => {
     try {
+      this.setState({ loader: true });
       const { total, hits } = await getImages(keyWord, page);
       this.setState(prevState => ({
         images: [...prevState.images, ...hits],
@@ -42,8 +42,9 @@ export class App extends Component {
     } catch (error) {
       this.setState({ error: error.message });
       console.log('error: ', error);
+    } finally {
+      this.setState({ loader: false });
     }
-    this.setState({ loader: false });
   };
 
   onLoadMore = () => {
