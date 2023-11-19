@@ -1,102 +1,133 @@
 import { Component } from 'react';
 import { Searchbar } from './Searchbar/Searchbar';
-import { getImages } from './service/imagesAPI';
+import { getImages } from '../services/api';
 import { ImageGallery } from './ImageGallery/ImageGallery';
-import { ImageGalleryItem } from './ImageGallery/ImageGalleryItem/ImageGalleryItem';
 import { Button } from './Button/Button';
-import { Blocks } from 'react-loader-spinner';
+import { Loader } from './Loader/Loader';
 import { Modal } from './Modal/Modal';
-import css from './App.module.css';
+import React from 'react';
 
 export class App extends Component {
   state = {
-    keyWord: '',
-    page: 1,
     images: [],
-    total: 0,
-    error: null,
-    loader: false,
-    openModal: false,
-    modalImage: '',
+    isLoading: false,
+    currentSearch: '',
+    pageNr: 1,
+    modalOpen: false,
+    modalImg: '',
+    modalAlt: '',
+    total: '',
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    const { keyWord, page } = this.state;
-    if (prevState.keyWord !== keyWord || prevState.page !== page) {
-      this.setState({ loader: true });
-      this.fetchImages(keyWord, page);
+  handleSubmit = async e => {
+    e.preventDefault();
+    const inputForSearch = e.target.elements.inputForSearch;
+    if (inputForSearch.value.trim() === '') {
+      return;
+    }
+
+    this.setState({
+      currentSearch: inputForSearch.value,
+      images: [],
+      isLoading: false,
+      pageNr: 1,
+      modalOpen: false,
+      modalImg: '',
+      modalAlt: '',
+      total: '',
+    });
+  };
+
+  handleClickMore = () => {
+    this.setState(prev => ({ pageNr: prev.pageNr + 1 }));
+  };
+  componentDidUpdate(_, prevState) {
+    const prevQuery = prevState.currentSearch;
+    const nextQuery = this.state.currentSearch;
+    const prevPage = prevState.pageNr;
+    const nextPage = this.state.pageNr;
+
+    if (prevQuery !== nextQuery || prevPage !== nextPage) {
+      this.getData();
     }
   }
 
-  hendlSubmiForm = text => {
-    this.setState({ keyWord: text, page: 1, images: [], total: 0 });
-  };
-
-  fetchImages = async (keyWord, page) => {
+  getData = async () => {
+    this.setState({ isLoading: true });
     try {
-      const { total, hits } = await getImages(keyWord, page);
-      this.setState(prevState => ({
-        images: [...prevState.images, ...hits],
-        total: total,
-      }));
+      const response = await getImages(
+        this.state.currentSearch,
+        this.state.pageNr
+      );
+      this.setState({
+        images: [...this.state.images, ...response.hits],
+        total: response.totalHits,
+      });
     } catch (error) {
-      this.setState({ error: error.message });
-      console.log('error: ', error);
+      console.log(error);
+    } finally {
+      this.setState({ isLoading: false });
     }
-    this.setState({ loader: false });
   };
 
-  onLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  handleImageClick = e => {
+    this.setState({
+      modalOpen: true,
+      modalAlt: e.target.alt,
+      modalImg: e.target.name,
+    });
   };
 
-  toglModal = largeImage => {
-    this.setState(({ openModal }) => ({
-      openModal: !openModal,
-      modalImage: largeImage,
-    }));
+  handleModalClose = () => {
+    this.setState({
+      modalOpen: false,
+      modalImg: '',
+      modalAlt: '',
+    });
   };
+
+  handleKeyDown = event => {
+    if (event.code === 'Escape') {
+      this.handleModalClose();
+    }
+  };
+
+  componentDidMount() {
+    window.addEventListener('keydown', this.handleKeyDown);
+  }
 
   render() {
     return (
-      <>
-        <div className={css.App}>
-          <Searchbar onSubmit={this.hendlSubmiForm} />
-          <ImageGallery>
-            {this.state.images.map(
-              ({ id, webformatURL, largeImageURL, tags }) => {
-                return (
-                  <ImageGalleryItem
-                    key={id}
-                    preview={webformatURL}
-                    largeImage={largeImageURL}
-                    tag={tags}
-                    tgModal={this.toglModal}
-                  />
-                );
-              }
-            )}
-          </ImageGallery>
-          {this.state.images.length < this.state.total && (
-            <Button addPhotos={this.onLoadMore} />
-          )}
-        </div>
-        {this.state.loader && (
-          <Blocks
-            wrapperClassName={css.Loader}
-            visible={true}
-            height="80"
-            width="80"
-            ariaLabel="blocks-loading"
-          />
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gridGap: '16px',
+          paddingBottom: '24px',
+        }}
+      >
+        {this.state.isLoading ? (
+          <Loader />
+        ) : (
+          <React.Fragment>
+            <Searchbar onSubmit={this.handleSubmit} />
+            <ImageGallery
+              onImageClick={this.handleImageClick}
+              images={this.state.images}
+            />
+            {this.state.images.length < this.state.total ? (
+              <Button onClick={this.handleClickMore} />
+            ) : null}
+          </React.Fragment>
         )}
-        {this.state.openModal && (
+        {this.state.modalOpen ? (
           <Modal
-            modalImage={this.state.modalImage}
-            closeModal={this.toglModal}
+            src={this.state.modalImg}
+            alt={this.state.modalAlt}
+            handleClose={this.handleModalClose}
           />
-        )}
-      </>
+        ) : null}
+      </div>
     );
   }
 }
