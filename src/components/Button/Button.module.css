@@ -1,13 +1,7 @@
 .Button {
   padding: 8px 16px;
   border-radius: 2px;
-  background: linear-gradient(
-    315deg,
-    rgba(28, 32, 23, 0.7) 5%,
-    rgba(15, 96, 67, 0.7) 38%,
-    rgba(28, 27, 31, 0.7) 52%,
-    rgba(126, 102, 74, 0.7) 73%
-  );
+  background-color: #3f51b5;
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
   display: inline-block;
